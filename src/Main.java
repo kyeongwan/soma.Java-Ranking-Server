@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 
 /**
@@ -6,8 +8,13 @@ import java.util.HashMap;
 public class Main {
 
     HashMap<Integer, User> map;
+    ArrayList<User> list;
 
     public static void main(String argp[]){
-        
+        new Main();
+    }
+
+    public Main(){
+        Collections.sort(list);
     }
 }
