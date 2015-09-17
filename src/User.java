@@ -25,13 +25,26 @@ public class User implements Comparable {
         return score;
     }
 
+    public void setScore(int score) {
+        this.score = score;
+    }
+
+    @Override
+    public String toString() {
+        return "User{" +
+                "name='" + name + '\'' +
+                ", age=" + age +
+                ", score=" + score +
+                '}';
+    }
+
     @Override
     public int compareTo(Object o) {
         User other = (User)o;
         if(this.score > other.getScore())
-            return 1;
-        else if(this.score < other.getScore())
             return -1;
+        else if(this.score < other.getScore())
+            return 1;
         else
             return 0;
     }
