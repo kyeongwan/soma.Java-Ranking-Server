@@ -6,11 +6,13 @@ public class User implements Comparable {
     private String name;    // 이름
     private int age;        // 나이
     private int score;      // 점수
+    private boolean isLogined;
 
     public User(String name, int age, int score) {
         this.name = name;
         this.age = age;
         this.score = score;
+        this.isLogined = false;
     }
 
     public String getName() {
@@ -29,6 +31,15 @@ public class User implements Comparable {
         this.score = score;
     }
 
+    public void setIsLogined(boolean isLogined) {
+        this.isLogined = isLogined;
+    }
+
+    public boolean isLogined() {
+
+        return isLogined;
+    }
+
     @Override
     public String toString() {
         return "User{" +
@@ -36,6 +47,7 @@ public class User implements Comparable {
                 ", age=" + age +
                 ", score=" + score +
                 '}';
+
     }
 
     @Override
