@@ -1,6 +1,5 @@
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.ServerSocket;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.nio.charset.Charset;
@@ -11,71 +10,71 @@ import java.util.*;
  */
 public class Main {
 
-    HashMap<String, User> map;
-    List<User> list;
-    Selector selector;
-    ServerSocketChannel serverSocketChannel;
-    List<Client> connections = new Vector<Client>();
-    HashMap<String, Client> loginList = new HashMap<>();
+    private HashMap<String, User> userMap;  // Key = User ID, Value = User Object
+    private List<User> rankedUserList;
+    private Selector selector;
+    private ServerSocketChannel serverSocketChannel;
+    private List<Client> connections = new LinkedList<>();
+    private HashMap<String, Client> loginList = new HashMap<>();
 
-    public static void main(String argp[]){
+    public static void main(String argp[]) {
         new Main();
     }
 
-    public Main(){
+    public Main() {
 
-        map = new HashMap<>();
-        list = new ArrayList<>();
+        userMap = new HashMap<>();
+        rankedUserList = new ArrayList<>();
         User user;
-        for(int i=0; i<1000000; i++) {
-            user = new User("u"+i, 10, 0);
-            map.put(i+"", user);
-            list.add(user);
+        for (int i = 0; i < 1000000; i++) {
+            user = new User("u" + i, 10, 0);
+            userMap.put(i + "", user);
+            rankedUserList.add(user);
         }
-        Collections.sort(list);
+        Collections.sort(rankedUserList);
 
         startServer();
     }
 
-    void startServer(){
-        try{
+    void startServer() {
+        try {
             selector = Selector.open();
             serverSocketChannel = ServerSocketChannel.open();
             serverSocketChannel.configureBlocking(false);   // set to non-block server
             serverSocketChannel.bind(new InetSocketAddress(5001));
             serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
         } catch (IOException e) {
-            if(serverSocketChannel.isOpen())
+            if (serverSocketChannel.isOpen())
                 stopServer();
             e.printStackTrace();
             return;
         }
 
-        Thread thread = new Thread(){
+        Thread thread = new Thread() {
             @Override
-            public void run(){
-                while(true){
-                    try{
+            public void run() {
+                while (true) {
+                    try {
                         int keyCount = selector.select();
-                        if(keyCount == 0)
+                        if (keyCount == 0)
                             continue;
                         Set<SelectionKey> selectedKeys = selector.selectedKeys();
                         Iterator<SelectionKey> iterator = selectedKeys.iterator();
-                        while(iterator.hasNext()){
+                        while (iterator.hasNext()) {
                             SelectionKey selectionKey = iterator.next();
-                            if(selectionKey.isAcceptable())
+                            if (selectionKey.isAcceptable())
                                 accept(selectionKey);
-                            else if(selectionKey.isReadable()){
-                                Client client = (Client)selectionKey.attachment();
+                            else if (selectionKey.isReadable()) {
+                                Client client = (Client) selectionKey.attachment();
                                 client.receive(selectionKey);
-                            }else if(selectionKey.isWritable()){
-                                Client client = (Client)selectionKey.attachment();
+                            } else if (selectionKey.isWritable()) {
+                                Client client = (Client) selectionKey.attachment();
                                 client.send(selectionKey);
                             }
                             iterator.remove();
                         }
                     } catch (IOException e) {
-                        if(serverSocketChannel.isOpen())
+                        if (serverSocketChannel.isOpen())
                             stopServer();
                         e.printStackTrace();
                     }
@@ -86,17 +85,17 @@ public class Main {
         System.out.println("LOG : Server Start!!");
     }
 
-    void stopServer(){
-        try{
+    void stopServer() {
+        try {
             Iterator<Client> iterator = connections.iterator();
-            while(iterator.hasNext()){
+            while (iterator.hasNext()) {
                 Client client = iterator.next();
                 client.socketChannel.close();
                 iterator.remove();
             }
-            if(serverSocketChannel!=null && serverSocketChannel.isOpen())
+            if (serverSocketChannel != null && serverSocketChannel.isOpen())
                 serverSocketChannel.close();
-            if(selector != null && selector.isOpen())
+            if (selector != null && selector.isOpen())
                 selector.close();
         } catch (IOException e) {
             e.printStackTrace();
@@ -104,17 +103,16 @@ public class Main {
         }
     }
 
-    void accept(SelectionKey selectionKey){
-        try{
+    void accept(SelectionKey selectionKey) {
+        try {
             ServerSocketChannel serverSocketChannel = (ServerSocketChannel) selectionKey.channel();
             SocketChannel socketChannel = serverSocketChannel.accept();
 
             Client client = new Client(socketChannel);
-            client.start();
 
             connections.add(client);
         } catch (IOException e) {
-            if(serverSocketChannel.isOpen())
+            if (serverSocketChannel.isOpen())
                 stopServer();
             e.printStackTrace();
         }
@@ -124,22 +122,17 @@ public class Main {
     class CalcClass {
 
         public void updateUser(String id, int score) {
-            User user = map.get(id);
+            User user = userMap.get(id);
             user.setScore(score);
-            Collections.sort(list);
+            Collections.sort(rankedUserList);
+            notifyAll();
         }
 
-        /**
-         * Get 21 User include me
-         *
-         * @param id
-         * @return
-         */
         public List<User> getMyRank(String id) {
-            User user = map.get(id);
+            User user = userMap.get(id);
             int i = 0;
             while (true) {
-                User target = list.get(i);
+                User target = rankedUserList.get(i);
                 if (target.equals(user))
                     break;
                 i++;
@@ -148,29 +141,24 @@ public class Main {
             int end = i + 11;
             if (i < 10)
                 start = 0;
-            if (list.size() - 10 < i)
-                end = list.size();
-            return list.subList(start, end);
+            if (rankedUserList.size() - 10 < i)
+                end = rankedUserList.size();
+            return rankedUserList.subList(start, end);
         }
 
-        /**
-         * Top Ranking
-         *
-         * @return List(1, 10)
-         */
-
         public List<User> getTopRank() {
-            return list.subList(0, 10);
+            return rankedUserList.subList(0, 10);
         }
     }
 
 
-    class Client extends Thread {
+    class Client {
         SocketChannel socketChannel;
         String sendData;
         User user;
         CalcClass calc;
-        Client(SocketChannel socketChannel){
+
+        Client(SocketChannel socketChannel) {
             this.socketChannel = socketChannel;
             calc = new CalcClass();
             try {
@@ -184,7 +172,8 @@ public class Main {
                 e.printStackTrace();
             }
         }
-        void receive(SelectionKey selectionKey){
+
+        void receive(SelectionKey selectionKey) {
             try {
                 ByteBuffer byteBuffer = ByteBuffer.allocate(100);
                 int byteCount = socketChannel.read(byteBuffer);
@@ -200,31 +189,32 @@ public class Main {
                 System.out.println("Get Data " + request);
 
                 String datamap[] = request.split(":");
-                if("login".equals(datamap[0])){
+                if ("login".equals(datamap[0])) {
                     System.out.println(datamap[1]);
-                    user = map.get(datamap[1]);
-                    if(!user.isLogined()){
+                    user = userMap.get(datamap[1]);
+                    if (!user.isSignedIn()) {
                         user.setIsLogined(true);
-                    }else{
+                    } else {
                         loginList.get(datamap[1]).socketChannel.close();
                         connections.remove(loginList.get(datamap[1]));
                     }
                     loginList.put(datamap[1], this);
                     this.sendData = "Login Success\r\n";
                     selectionKey.interestOps(SelectionKey.OP_WRITE);
-                }else if("myRank".equals(datamap[0])) {
+                } else if ("myRank".equals(datamap[0])) {
+                    List sublist;
                     synchronized (calc) {
-                        List list = calc.getMyRank(datamap[1]);
+                        sublist = calc.getMyRank(datamap[1]);
                     }
-                    this.sendData = list.toString() + "\r\n";
+                    this.sendData = sublist.toString() + "\r\n";
                     selectionKey.interestOps(SelectionKey.OP_WRITE);
-                }else if("scoreUpdate".equals(datamap[0])){
+                } else if ("scoreUpdate".equals(datamap[0])) {
                     synchronized (calc) {
                         calc.updateUser(datamap[1], Integer.parseInt(datamap[2]));
                     }
                     this.sendData = "Update Complete" + "\r\n";
                     selectionKey.interestOps(SelectionKey.OP_WRITE);
-                }else if("getTopRank".equals(datamap[0])){
+                } else if ("getTopRank".equals(datamap[0])) {
                     synchronized (calc) {
                         this.sendData = calc.getTopRank().toString() + "\r\n";
                     }
@@ -232,7 +222,7 @@ public class Main {
                 }
                 selector.wakeup();
             } catch (Exception e) {
-                try{
+                try {
                     connections.remove(this);
                     //user.setIsLogined(false);
                     socketChannel.close();
@@ -243,7 +233,7 @@ public class Main {
             }
         }
 
-        void send(SelectionKey selectionKey){
+        void send(SelectionKey selectionKey) {
             try {
                 Charset charset = Charset.forName("UTF-8");
                 ByteBuffer byteBuffer = charset.encode(sendData);
@@ -254,11 +244,6 @@ public class Main {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }
-
-        @Override
-        public void run() {
-
         }
     }
 

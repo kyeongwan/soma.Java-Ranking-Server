@@ -14,7 +14,7 @@ public class ClientAPI1 {
     int id;
 
     public static void main(String arg[]){
-        new ClientAPI1(1);
+        new ClientAPI1(50);
         Scanner scanner = new Scanner(System.in);
         //scanner.nextInt();
         //new ClientAPI1(1);
@@ -71,7 +71,7 @@ public class ClientAPI1 {
                         int readByteCount = socketChannel.read(byteBuffer);
 
                         if (readByteCount == -1)
-                            continue;//throw new IOException();
+                            throw new IOException();
 
                         byteBuffer.flip();
                         Charset charset = Charset.forName("UTF-8");
@@ -114,7 +114,7 @@ public class ClientAPI1 {
                 break;
         try{
             Charset charset = Charset.forName("UTF-8");
-            ByteBuffer byteBuffer = charset.encode("myRank:" + id);
+            ByteBuffer byteBuffer = charset.encode("myRank:"+id);
             socketChannel.write(byteBuffer);
             System.out.println("LOG : Send OK");
             receive();
